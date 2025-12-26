@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nhập tên</title>
+
+  <style>
+    /* Ép font toàn bộ ticket để không lỗi tiếng Việt */
+.ticket-wrapper, .ticket-wrapper * {
+font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+}
+
+body {
+background: #1a1a1a;
+display: flex;
+justify-content: center;
+padding: 20px;
+}
+
+
+.ticket-wrapper {
+background: #ffeb3b;
+padding: 5px;
+border: 1px solid #d32f2f;
+border-radius: 4px;
+position: relative;
+width: 380px;
+}
+
+.outer-border {
+border: 1px dashed #d32f2f;
+padding: 10px;
+}
+
+.ticket-header h1 {
+margin: 0 0 10px 0;
+color: #d32f2f;
+text-align: center;
+font-size: 18px;
+text-transform: uppercase;
+font-weight: bold;
+}
+
+.grid {
+display: grid;
+grid-template-columns: repeat(9, 1fr);
+background: #5d4037;
+gap: 1px;
+border: 1px solid #5d4037;
+}
+
+.cell {
+width: 100%;
+aspect-ratio: 1/1.2;
+background: #fff;
+display: flex;
+justify-content: center;
+align-items: center;
+font-size: 1.2rem;
+font-weight: bold;
+cursor: pointer;
+color: #000;
+}
+
+.cell.empty { background: #fdf5e6; }
+.cell.selected { background: #d32f2f !important; color: #fff !important; }
+
+/* VIỀN CÁCH 3 BLOCK (3x3x3) */
+.grid div:nth-child(27n + 28), .grid div:nth-child(27n + 29),
+.grid div:nth-child(27n + 30), .grid div:nth-child(27n + 31),
+.grid div:nth-child(27n + 32), .grid div:nth-child(27n + 33),
+.grid div:nth-child(27n + 34), .grid div:nth-child(27n + 35),
+.grid div:nth-child(27n + 36) {
+margin-top: 5px;
+box-shadow: 0 -4px 0 0 #5d4037;
+}
+
+.ticket-footer { text-align: center; font-size: 9px; color: #d32f2f; margin-top: 8px; }
+
+/* POPUP */
+.overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; z-index: 999; width: 80%; }
+.msg-box { padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+
+/* Chữ Đợi viết hoa, đậm, font chuẩn */
+.waiting {
+background: #fff;
+color: #d32f2f;
+border: 4px solid #ffc107;
+font-size: 3rem;
+font-weight: 900;
+text-transform: uppercase;
+}
+
+.congrats { background: linear-gradient(135deg, #d32f2f, #ff5252); color: #fff; border: 2px solid #fff; }
+.congrats-text { font-size: 1.5rem; font-weight: bold; text-transform: uppercase; }
+.sub-text { font-weight: bold; }/* Đổi màu nền và chữ của ô nhập */
+    input[type="text"] {
+      background-color: #f0f8ff; /* xanh nhạt */
+      color: #000080;            /* chữ xanh đậm */
+      padding: 5px;
+      border: 2px solid #000080;
+      border-radius: 5px;
+    }
+
+    /* Đổi màu nút bấm */
+    button {
+      background-color: #4CAF50; /* xanh lá */
+      color: white;              /* chữ trắng */
+      padding: 8px 12px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    /* Khi rê chuột vào nút */
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+
+  
+</head>
+<body>
+  
+<div class="ticket-wrapper">
+<div class="outer-border">
+<div class="ticket-header">
+<h1>Tết rực rỡ - Vui lô tô</h1>
+</div>
+<div id="loto-grid" class="grid"></div>
+<div class="ticket-footer">Mã vé: 2025-LOTO-PREMIUM</div>
+</div>
+
+<div id="popup-waiting" class="overlay">
+<div class="msg-box waiting">ĐỢI...</div>
+</div>
+
+<div id="popup-congrats" class="overlay">
+<div class="msg-box congrats">
+<div class="congrats-text">🎊 CHÚC MỪNG 🎊</div>
+<div class="sub-text">BẠN ĐÃ KINH RỒI!</div>
+</div>
+</div>
+</div>
+
+  <script>
+    // 1. Hiển thị khung nhập tên khi vừa vào trang
+window.onload = function() {
+    // Tạo khung khóa màn hình
+    const lockOverlay = document.createElement('div');
+    lockOverlay.id = "lock-screen";
+    lockOverlay.innerHTML = `
+        <div style="background: white; padding: 25px; border-radius: 15px; text-align: center; width: 300px; border: 3px solid #d32f2f; box-shadow: 0 0 20px rgba(255,255,255,0.2);">
+            <h2 style="color: #d32f2f; margin-bottom: 15px; font-family: Arial;">DANH TÍNH NGƯỜI CHƠI</h2>
+            <p style="font-size: 14px; margin-bottom: 15px; color: #333;">Vui lòng nhập tên của bạn để bắt đầu tham gia chơi Lô Tô!</p>
+            
+            <input type="text" id="player-name" placeholder="Nhập tên của bạn..." 
+                style="width: 90%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px; outline: none;">
+            
+            <button id="btn-start" onclick="submitName()" 
+                style="background: #d32f2f; color: white; padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px;">
+                BẮT ĐẦU CHƠI
+            </button>
+            <p id="loading-msg" style="display:none; font-size: 12px; color: #666; margin-top: 10px;">Đang kết nối danh sách...</p>
+        </div>
+    `;
+    
+    Object.assign(lockOverlay.style, {
+        position: 'fixed', top: '0', left: '0', width: '100%', height: '100%',
+        backgroundColor: 'rgba(0,0,0,0.95)', display: 'flex', justifyContent: 'center',
+        alignItems: 'center', zIndex: '9999'
+    });
+    
+    document.body.appendChild(lockOverlay);
+};
+
+// 2. Hàm gửi tên lên Google Sheets và mở khóa vé
+function submitName() {
+    const name = document.getElementById('player-name').value.trim();
+    const btn = document.getElementById('btn-start');
+    const loading = document.getElementById('loading-msg');
+
+    if (name === "") {
+        alert("Bạn chưa nhập tên mà!");
+        return;
+    }
+
+    // Vô hiệu hóa nút để tránh nhấn nhiều lần
+    btn.disabled = true;
+    btn.innerText = "ĐANG LƯU...";
+    loading.style.display = "block";
+
+    // LINK API SheetDB của bạn (Thay đoạn abcd12345 bằng link của bạn)
+    const sheetDB_URL = 'https://sheetdb.io/api/v1/codhbiuvllzp9'; 
+
+    fetch(sheetDB_URL, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            data: [
+                {
+                    'ten_nguoi_choi': name,
+                    'thoi_gian': new Date().toLocaleString('vi-VN')
+                }
+            ]
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Success:', data);
+        document.getElementById('lock-screen').remove()
+        alert("Chào mừng " + name + "! Chúc bạn may mắn.");
+    })
+    .catch((error) => {
+        console.error('Error:', error);
+        alert("Có lỗi kết nối, nhưng bạn vẫn có thể chơi!");
+        document.getElementById('lock-screen').remove();
+    });
+}
+function generateSpacedLoto() {
+const rows = 9, cols = 9;
+let ticket;
+
+function tryGenerate() {
+ticket = Array.from({ length: rows }, () => Array(cols).fill(null));
+let colPools = Array.from({ length: cols }, (_, c) => {
+let min = c * 10 + (c === 0 ? 1 : 0);
+let max = (c === 8) ? 90 : c * 10 + 9;
+let p = [];
+for (let i = min; i <= max; i++) p.push(i);
+return p.sort(() => Math.random() - 0.5);
+});
+
+for (let r = 0; r < rows; r++) {
+let filled = 0;
+let attempts = 0;
+let colOrder = [0, 1, 2, 3, 4, 5, 6, 7, 8].sort(() => Math.random() - 0.5);
+
+while (filled < 5 && attempts < 400) {
+let c = colOrder[attempts % cols];
+
+// QUY TẮC "TỐI ĐA 2": Nếu 2 ô trước đó đã có số, ô thứ 3 PHẢI trống
+
+// Kiểm tra Hàng ngang
+let horOk = true;
+if (c >= 2 && ticket[r][c-1] && ticket[r][c-2]) horOk = false;
+if (c <= 6 && ticket[r][c+1] && ticket[r][c+2]) horOk = false;
+if (c >= 1 && c <= 7 && ticket[r][c-1] && ticket[r][c+1]) horOk = false;
+
+// Kiểm tra Cột dọc
+let verOk = true;
+if (r >= 2 && ticket[r-1][c] && ticket[r-2][c]) verOk = false;
+
+let countInCol = 0;
+for(let i=0; i<r; i++) if(ticket[i][c]) countInCol++;
+
+if (!ticket[r][c] && horOk && verOk && countInCol < 6) {
+ticket[r][c] = colPools[c].pop();
+filled++;
+}
+attempts++;
+}
+
+if (filled < 5) {
+ticket[r].fill(null);
+r--;
+if (r < -1) return false;
+continue;
+}
+}
+
+// Kiểm tra Cột tối thiểu 4 số
+for (let c = 0; c < cols; c++) {
+let colTotal = 0;
+for (let r = 0; r < rows; r++) if (ticket[r][c]) colTotal++;
+if (colTotal < 4) return false;
+}
+return true;
+}
+
+while (!tryGenerate());
+
+for (let c = 0; c < cols; c++) {
+let vals = [];
+for (let r = 0; r < rows; r++) if (ticket[r][c]) vals.push(ticket[r][c]);
+vals.sort((a, b) => a - b);
+let idx = 0;
+for (let r = 0; r < rows; r++) if (ticket[r][c]) ticket[r][c] = vals[idx++];
+}
+return ticket;
+}
+
+const grid = document.getElementById('loto-grid');
+const data = generateSpacedLoto();
+
+data.forEach((row, rIdx) => {
+row.forEach((num) => {
+const cell = document.createElement('div');
+cell.className = num ? 'cell' : 'cell empty';
+cell.textContent = num || '';
+if (num) {
+cell.dataset.row = rIdx;
+cell.onclick = function() {
+this.classList.toggle('selected');
+const count = Array.from(document.querySelectorAll(`.cell[data-row="${rIdx}"].selected`)).length;
+if (count === 5) showPopup('popup-congrats', 20000);
+else if (count === 4) showPopup('popup-waiting', 1000);
+};
+}
+grid.appendChild(cell);
+});
+});
+
+function showPopup(id, ms) {
+const el = document.getElementById(id);
+el.style.display = 'block';
+if (el.timer) clearTimeout(el.timer);
+el.timer = setTimeout(() => {
+el.style.display = 'none';
+}, ms);
+}
+
+  </script>
+</body>
+</html>
